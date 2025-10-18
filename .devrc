@@ -1,0 +1,30 @@
+alias main='/home/arcno/src/fx/main '
+alias make='bear_make '
+bear_make() {
+    local ec=0
+    if [[ -z $1 || $1 == "tests" ]]; then
+        echo "bear --append -- make:"
+        bear --append -- make "$@"
+        ec=$?
+    else
+        /usr/bin/make "$@"
+        ec=$?
+        [[ $1 == "clean" && -f ./compile_commands.json ]] \
+        && rm ./compile_commands.json
+    fi
+    return $ec
+}
+preprun() {
+    [[ -d ./outtest ]] && rm -rf ./outtest
+    mkdir ./outtest
+    touch ./outtest/file{1..30}
+    mkdir ./outtest/dir{1..30}
+}
+run() {
+    [[ -f ./main ]] || return
+    preprun
+
+    cd ./outtest
+    ../main
+    cd ..
+}

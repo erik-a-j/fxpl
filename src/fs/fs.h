@@ -1,27 +1,40 @@
 #ifndef FS_H
 #define FS_H
+#include <stddef.h>
 
-#include <sys/types.h>
-#include <linux/limits.h>
-
-typedef struct fs_entry_t {
-    char name[NAME_MAX+1];
-    int is_dir;
-    off_t size;
-    time_t mtime;
-    mode_t mode;
-} fs_entry_t;
-
-typedef struct fx_t {
-    char cwd[PATH_MAX+1];
-    struct {
-        fs_entry_t *entries;
-        int num;
-        int cap;
-    } e;
-} fx_t;
-
-int fs_read_dir(fx_t *fx);
-int fx_init(fx_t *fx);
-
+typedef struct abuf_t abuf_t;
+typedef struct ctx_t ctx_t;
+typedef struct ctx_entries_t ctx_entries_t;
+/**
+ * @brief get cwd
+ * @param ctx 
+ * @return 0 on success
+ */
+int fs_getcwd(ctx_t *ctx);
+/**
+ * @brief get pretty cwd
+ * @param buf 
+ * @param bufsize 
+ * @param cwd 
+ * @return 0 on success
+ */
+int fs_get_rendered_cwd(char *buf, size_t bufsize, const char *cwd);
+/**
+ * @brief read dir
+ * @param ab OPTIONAL
+ * @param p
+ * @param path
+ * @return 0 on success
+ */
+int fs_read_dir(abuf_t *ab, ctx_entries_t *p, const char *path);
+/**
+ * @brief get relative dir
+ * @param buf 
+ * @param bufsize 
+ * @param path 
+ * @param relative 
+ * @return 0 on success, 1 if relative path is not a dir, -1 on fail
+ */
+int fs_get_relative_dir(char *buf, size_t bufsize, const char *path, const char *relative);
+void fs_clear_entries(ctx_entries_t *p);
 #endif /*FS_H*/

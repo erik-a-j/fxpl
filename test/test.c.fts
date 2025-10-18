@@ -1,0 +1,40 @@
+#include <sys/stat.h>
+#include <fts.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main(int argc, char *argv[]) {
+    char *paths[] = { (argc > 1 ? argv[1] : "."), NULL };
+    FTS64 *ftsp = fts64_open(paths, FTS_NOCHDIR, NULL);
+    if (!ftsp) {
+        perror("fts_open");
+        return 1;
+    }
+    FTSENT64 entries[20];
+    int i = 0;
+    FTSENT64 *ent;
+    while ((ent = fts64_read(ftsp)) != NULL) {
+        // The root directory itself (depth 0) — skip it
+        if (ent->fts_level == 0)
+            continue;
+        // Only list top-level entries
+        if (ent->fts_level == 1) {
+            if (ent->fts_info == FTS_F || ent->fts_info == FTS_D) {
+                memcpy(&entries[i++], ent, sizeof(FTSENT64));
+                if (S_ISDIR(ent->fts_statp->st_mode)) {
+                    printf("dir: ");
+                }
+                printf("%s", ent->fts_name);
+                printf("  %s\n", ent->fts_parent->fts_name);
+            }
+        }
+        // Skip recursion into subdirectories
+        if (ent->fts_info == FTS_D)
+            fts64_set(ftsp, ent, FTS_SKIP);
+    }
+
+    fts64_close(ftsp);
+    return 0;
+}

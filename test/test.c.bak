@@ -1,0 +1,20 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <magic.h>
+
+static magic_t mgc;
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) return -1;
+    mgc = magic_open(MAGIC_MIME_TYPE);
+    if (!mgc) return 1;
+    if (magic_load(mgc, NULL) != 0) {
+        magic_close(mgc);
+        return 1;
+    }
+    const char *desc = magic_file(mgc, argv[1]);
+    if (desc) printf("%s\n", desc);
+    else printf("error\n");
+    
+    magic_close(mgc);
+}
