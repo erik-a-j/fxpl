@@ -16,7 +16,7 @@
 
 int main() {
     int term_israw = 0;
-    if (log_init("/home/arcno/src/fx/log.txt") != 0) return 1;
+    if (log_init("/home/arcno/src/fxpl/log.txt") != 0) return 1;
 
     if (term_enable_raw() != 0)
         goto eop;
@@ -27,15 +27,13 @@ int main() {
 
     if (term_get_winsize(&ctx.win.rows, &ctx.win.cols) != 0)
         goto eop;
-    ctx_update_dims();
+    ctx_update_dims(&ctx);
 
     if (fs_getcwd(&ctx) != 0) 
         goto eop;
-    if (fs_read_dir(&ctx.d_cur.ab, &ctx.d_cur.e, ctx.cwd) != 0)
+    if (fs_read_dir(&ctx.d_cur.ab, &ctx.d_cur.e, ctx.CWD) != 0)
         goto eop;
-    if (fs_get_relative_dir(ctx.d_par.path,
-                            sizeof(ctx.d_par.path),
-                            ctx.cwd, "..") == 0) {
+    if (fs_get_relative_dir(&ctx.d_par.path, ctx.CWD, "..") == 0) {
         if (fs_read_dir(&ctx.d_par.ab, &ctx.d_par.e, ctx.d_par.path) != 0)
             goto eop;
     }
@@ -51,7 +49,7 @@ int main() {
             if (term_get_winsize(&ctx.win.rows, &ctx.win.cols) != 0) {
                 break;
             }
-            ctx_update_dims();
+            ctx_update_dims(&ctx);
             putlog_fmt(LOG_INFO, "did resize, rows: %d, cols: %d", ctx.win.rows, ctx.win.cols);
             if (o_refresh(&ctx, o_ALL) != 0) {
                 putlog(LOG_ERROR, "o_refresh() failed", 0);

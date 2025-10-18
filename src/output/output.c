@@ -1,12 +1,13 @@
 #include "../ctx/ctx.h"
-#include "output.h"
-#include "symbols/symbols.h"
-#include "../abuf/abuf.h"
-#include "../fs/fs.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include "output.h"
+#include "symbols/symbols.h"
+#include "../abuf/abuf.h"
+#include "../fs/fs.h"
+#include "../fs/fs_utils.h"
 #include "../logging/log.h"
 #include "../utils.h"
 
@@ -42,28 +43,44 @@ static inline void draw_cwd(ctx_t *ctx) {
     ab_appstrlit("\x1b[K");
     ab_appstrlit("\x1b[38;2;235;219;178m");
     ab_appfmt(ctx->win.cols, "%s", ctx->rcwd);
-    ab_appstrlit("\x1b[0m");
+    ab_appstrlit("\x1b[0m"); 
 }
 static inline void draw_cwd_entries(ctx_t *ctx) {
     ctx_entries_t *e = &ctx->d_cur.e;
     ctx_win_t *win = &ctx->win;
-    for (int i = 0; i < win->erows - win->erows_beg; i++) {
-        ab_appstrlit("\x1b[0m");
-        ab_appfmt(0, "\x1b[%d;%dH", win->erows_beg+1 + i, win->ecols_beg+1);
-        ab_appnch(' ', win->ecols);
-        if (i >= e->num) continue;
-        
-        ab_appfmt(0, "\x1b[%dD", win->ecols);
-        //ab_appstrlit("\x1b[K");
-        if (win->cy == i)
-            ab_appstrlit("\x1b[7m");
-        if (e->ent[i].is_dir)
-            ab_appstrlit("\x1b[1m\x1b[38;2;233;196;97m");
-        ab_appnch(' ', 1);
-        ab_appnch(' ', 1);
 
-        ab_appfmt(win->ecols, " %s", e->ent[i].name);
-        int pad = win->ecols - (int)strlen(e->ent[i].name)-3;
+    int rows = win->erows;
+    int cols = win->ecols;
+
+    for (int i = 0; i < rows; i++) {
+        int scr_y = win->erows_beg+1 + i;
+        int scr_x = win->ecols_beg+1;
+        int idx = win->etop + i;
+        int is_cur_row = (idx == win->cy)? 1 : 0;
+
+        ab_appstrlit("\x1b[0m");
+        ab_appfmt(0, "\x1b[%d;%dH", scr_y, scr_x);
+        ab_appnch(' ', cols);
+        ab_appfmt(0, "\x1b[%dD", cols);
+
+        if (idx > e->num) continue;
+        
+        if (is_cur_row)
+            ab_appstrlit("\x1b[7m");
+
+        if (e->ent[idx].is_dir)
+            ab_appstrlit("\x1b[1m\x1b[38;2;233;196;97m");
+        ab_appnch(' ', 3);
+
+        const char *name = e->ent[idx].name;
+        int name_space = cols - 3;
+        if (name_space < 0) name_space = 0;
+
+        ab_appfmt(name_space, "%s", name);
+
+        int name_len = (int)strlen(name);
+        if (name_len > name_space) name_len = name_space;
+        int pad = cols - 3 - name_len;
         if (pad > 0) ab_appnch(' ', pad);
     }
 }
@@ -85,6 +102,17 @@ static inline void draw_parent_entries(ctx_t *ctx) {
         ab_appstrlit("\x1b[0m");
     }
 }
+static inline void draw_status_bar(ctx_t *ctx) {
+    fs_entry_t *ent = &ctx->d_cur.e.ent[ctx->win.cy];
+    ab_appstrlit("\x1b[0m");
+    ab_appfmt(0, "\x1b[%d;0H", ctx->win.rows);
+    ab_appstrlit("\x1b[K");
+    ab_appstrlit(LHALF_CIRCLE);
+    //fs_pretty_size_t ps = fs_get_pretty_size( )
+    ab_appfmt(0, "%ld", ent->size);
+    ab_appstrlit(RHALF_CIRCLE);
+    //ab_appfmt(ctx->win.cols, "%s", ctx->d_cur.e.ent[ctx->win.cy].name);
+}
 int o_refresh(ctx_t *ctx, int flags) {
     if (!ctx) return -1;
     if (ctx->win.error) return 1;
@@ -105,6 +133,10 @@ int o_refresh(ctx_t *ctx, int flags) {
     }
     if (flags & o_PARENT) {
         draw_parent_entries(ctx);
+        if (ab.error) return -1;
+    }
+    if (flags & o_STATUS) {
+        draw_status_bar(ctx);
         if (ab.error) return -1;
     }
     if (write_all(STDOUT_FILENO, ab.b, ab.len) != 0) return -1;

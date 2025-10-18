@@ -9,6 +9,9 @@
 #define VLINE_JOINRIGHT_THICK "\xe2\x94\xa3"
 #define VLINE_JOINLEFT_THICK "\xe2\x94\xab"
 
+#define LHALF_CIRCLE "\xEE\x82\xB6"
+#define RHALF_CIRCLE "\xEE\x82\xB4"
+
 #include "ft.h"
 
 #endif /*SYMBOLS_H*/

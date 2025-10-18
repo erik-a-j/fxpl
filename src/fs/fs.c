@@ -46,8 +46,10 @@ int fs_get_rendered_cwd(char *buf, size_t bufsize, const char *cwd) {
 }
 
 int fs_getcwd(ctx_t *ctx) {
-    if (!getcwd(ctx->cwd, sizeof(ctx->cwd))) return -1;
-    fs_get_rendered_cwd(ctx->rcwd, sizeof(ctx->rcwd), ctx->cwd);
+    free(ctx->CWD);
+    ctx->CWD = getcwd(NULL, 0);
+    if (!ctx->CWD) return -1;
+    fs_get_rendered_cwd(ctx->rcwd, sizeof(ctx->rcwd), ctx->CWD);
     return 0;
 }
 void fs_clear_entries(ctx_entries_t *p) {
@@ -111,42 +113,54 @@ int fs_read_dir(abuf_t *ab, ctx_entries_t *p, const char *path) {
     return 0;
 }
 
-int fs_get_relative_dir(char *buf, size_t bufsize, const char *path, const char *relative) {
-    if (!buf || bufsize == 0 || !path || !relative) return -1;
+int fs_get_relative_dir(char **buf, const char *path, const char *rel) {
+    if (!path || !rel) return -1;
 
-    char newpath[PATH_MAX+2];
-    char *p = &newpath[0];
+    free(*buf);
+    *buf = NULL;
+    char *newpath = NULL;
 
-    if (strcmp("..", relative) == 0) {
+    if (strcmp("..", rel) == 0) {
         
         if (path[0] == '/' && path[1] == '\0') return 1;
-        char *mbuf = fs_dirname_dup(path);
-        if (!mbuf) {
+        newpath = fs_dirname_dup(path);
+        if (!newpath) {
             pfuncerr("errno == %d", errno);
             return -1;
         }
-        strcpy(newpath, mbuf);
-        free(mbuf);
-        
     } else {
-        size_t len_cwd = strnlen(path, PATH_MAX);
-        size_t len_rel = strnlen(relative, PATH_MAX);
-        if (len_cwd + 1 + len_rel >= sizeof(newpath)) {
-            return -1;
-        }
-        snprintf(newpath, sizeof(newpath), "%s/%s", path, relative);
-        if (newpath[0] == '/' && newpath[1] == '/')
-            p++;
-        DIR *d = opendir(p);
-        if (d)
+        size_t len_buf = 0;
+        size_t len_path = strlen(path);
+        size_t len_rel = strlen(rel);
+
+        if (path[len_path-1] == '/')
+            len_path--;
+        
+        len_buf += len_path;
+        len_buf += 1;
+        len_buf += len_rel+1;
+            
+        newpath = malloc(len_buf);
+        if (!newpath) return -1;
+        
+        char *p = newpath;
+        memcpy(p, path, len_path);
+        p += len_path;
+        *p++ = '/';
+
+        memcpy(p, rel, len_rel);
+        p += len_rel;
+        *p = '\0';
+
+        DIR *d = opendir(newpath);
+        if (d) {
             closedir(d);
-        else
+        } else {
+            free(newpath);
             return 1;
+        }
     }
-    strncpy(buf, p, bufsize);
-    //if (chdir(ctx->cwd) != 0) return 0;
-    //putlog_fmt(LOG_DEBUG, "chdir to: %s", ctx->cwd);
-    //fs_get_rendered_cwd(ctx);
+    *buf = newpath;
     return 0;
 } 
 

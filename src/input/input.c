@@ -5,8 +5,9 @@
 #include <poll.h>
 #include <errno.h>
 #include "../fs/fs.h"
+#include "../fs/dirname.h"
 #include "../ctx/ctx.h"
-#include "../ctx/ctx_dir_t_utils.h"
+#include "../ctx/ctx_utils.h"
 #include "../output/o_flags.h"
 #include "../logging/log.h"
 
@@ -47,7 +48,27 @@ int i_read_kseq(char **kseq_out) {
     }
     return 0;
 }
+static void clamp_cursor_and_scroll(ctx_t *ctx) {
+    ctx_entries_t *e = &ctx->d_cur.e;
+    ctx_win_t *win = &ctx->win;
 
+    int rows = win->erows;
+    if (rows < 1) rows = 1;
+
+    if (e->num == 0) { win->cy = 0; win->etop = 0; return; }
+    if (win->cy < 0) win->cy = 0;
+    if (win->cy >= e->num) win->cy = e->num-1;
+
+    if (win->cy < win->etop) {
+        win->etop = win->cy;
+    } else if (win->cy >= win->etop + rows) {
+        win->etop = win->cy - rows+1;
+    }
+
+    int max_top = (e->num > rows)? (e->num - rows) : 0;
+    if (win->etop < 0) win->etop = 0;
+    if (win->etop > max_top) win->etop = max_top;
+}
 enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
     if (!ctx) return P_FAIL;
     if (!kseq || kseq_len == 0) return P_NOOP;
@@ -62,8 +83,8 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
     if (kseq_len == 3 && kseq[1] == '[') { switch (kseq[2]) {
         case 'D':
         {
-            char buf[PATH_MAX+1];
-            int r = fs_get_relative_dir(buf, sizeof(buf), ctx->cwd, "..");
+            char *buf = NULL;
+            int r = fs_get_relative_dir(&buf, ctx->CWD, "..");
             if (r) {
                 if (r == -1)
                     return P_FAIL;
@@ -71,46 +92,54 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
             }
             ctx->o_flags |= o_ALL;
 
-            strcpy(ctx->cwd, buf);
-            if (chdir(ctx->cwd) != 0)
+            free(ctx->CWD);
+            ctx->CWD = buf;
+            buf = NULL;
+            if (chdir(ctx->CWD) != 0)
                 return P_FAIL;
-            if (fs_get_rendered_cwd(ctx->rcwd, sizeof(ctx->rcwd), ctx->cwd) != 0)
+            if (fs_get_rendered_cwd(ctx->rcwd, sizeof(ctx->rcwd), ctx->CWD) != 0)
                 return P_FAIL;
-            if (fs_read_dir(&ctx->d_cur.ab, &ctx->d_cur.e, ctx->cwd) != 0)
+            if (fs_read_dir(&ctx->d_cur.ab, &ctx->d_cur.e, ctx->CWD) != 0)
                 return P_FAIL;
 
             if (ctx->win.cy >= ctx->d_cur.e.num) ctx->win.cy = ctx->d_cur.e.num-1;
 
-            r = fs_get_relative_dir(buf, sizeof(buf), ctx->cwd, "..");
+            r = fs_get_relative_dir(&buf, ctx->CWD, "..");
             if (r) {
                 if (r == -1)
                     return P_FAIL;
                 fs_clear_entries(&ctx->d_par.e);
                 break;
             }
-            strcpy(ctx->d_par.path, buf);
+            
+            free(ctx->d_par.path);
+            ctx->d_par.path = buf;
+            buf = NULL;
             if (fs_read_dir(&ctx->d_par.ab, &ctx->d_par.e, ctx->d_par.path) != 0)
                 return P_FAIL;
             break;
         }
         case 'C':
         {
-            char buf[PATH_MAX+1];
-            int r = fs_get_relative_dir(buf, sizeof(buf), ctx->cwd, ctx->d_cur.e.ent[ctx->win.cy].name);
+            char *buf = NULL;
+            int r = fs_get_relative_dir(&buf, ctx->CWD, ctx->d_cur.e.ent[ctx->win.cy].name);
             if (r) {
                 if (r == -1) return P_FAIL;
                 break;
             }
-            ctx_dir_move(&ctx->d_par, &ctx->d_cur);
+            ctx->o_flags |= o_ALL;
 
-            strcpy(ctx->cwd, buf);
-            if (chdir(ctx->cwd) != 0) return P_FAIL;
-            if (fs_get_rendered_cwd(ctx->rcwd, sizeof(ctx->rcwd), ctx->cwd) != 0) {
+            ctx_dir_move(&ctx->d_par, &ctx->d_cur);
+            ctx_dir_init(&ctx->d_cur);
+            ctx->d_cur.path = buf;
+            buf = NULL;
+            
+            if (chdir(ctx->CWD) != 0) return P_FAIL;
+            if (fs_get_rendered_cwd(ctx->rcwd, sizeof(ctx->rcwd), ctx->CWD) != 0) {
                 return P_FAIL;
             }
-            if (fs_read_dir(&ctx->d_cur.ab, &ctx->d_cur.e, ctx->cwd) != 0) return P_FAIL;
+            if (fs_read_dir(&ctx->d_cur.ab, &ctx->d_cur.e, ctx->CWD) != 0) return P_FAIL;
             if (ctx->win.cy >= ctx->d_cur.e.num) ctx->win.cy = ctx->d_cur.e.num-1;
-            ctx->o_flags |= o_ALL;
             break;
         }
         case 'A':
@@ -119,7 +148,8 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
             } else {
                 ctx->win.cy--;
             }
-            ctx->o_flags |= o_CWDENT;
+            clamp_cursor_and_scroll(ctx);
+            ctx->o_flags |= (o_CWDENT | o_STATUS);
             break;
         case 'B':
             if (ctx->win.cy == ctx->d_cur.e.num-1) {
@@ -127,7 +157,8 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
             } else {
                 ctx->win.cy++;
             }
-            ctx->o_flags |= o_CWDENT;
+            clamp_cursor_and_scroll(ctx);
+            ctx->o_flags |= (o_CWDENT | o_STATUS);
             break;
         default: break;
     }}
