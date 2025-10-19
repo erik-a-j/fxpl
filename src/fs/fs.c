@@ -1,5 +1,5 @@
 #include "fs.h"
-#include "magic.h"
+#include "ft/magic.h"
 #include "dirname.h"
 #include <dirent.h>
 #include <sys/stat.h>
@@ -13,7 +13,6 @@
 #include "../ctx/ctx.h"
 #include "../abuf/abuf.h"
 #include "../logging/log.h"
-#include "../output/symbols/ft.h"
 #include "../utils.h"
 
 static int cmp_dirs_first_name(const void *aa, const void *bb) {
@@ -67,11 +66,7 @@ void fs_clear_entries(ctx_entries_t *p) {
     }
     p->num = 0;
 }
-static void get_ft(fs_entry_t *e) {
-    if (e->is_dir) {
-        strcpy(e->ft, DIR2_FT);
-    }
-}
+
 int fs_read_dir(abuf_t *ab, ctx_entries_t *p, const char *path) {
     if (!p || !path) return -1;
     if (ab) ab_clear(ab);

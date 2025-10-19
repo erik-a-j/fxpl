@@ -9,8 +9,8 @@ enum log_lvl_t {
    ,LOG_DEBUG
 };
 
-void log_close();
-int log_init(const char *path);
+typedef struct _IO_FILE FILE;
+int log_init(FILE **fp, const char *path);
 void putlog(enum log_lvl_t lvl, const char *s, size_t n);
 void putlog_fmt(enum log_lvl_t lvl, const char *fmt, ...);
 

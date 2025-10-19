@@ -7,43 +7,37 @@
 #include <time.h>
 #include "../utils.h"
 
-static char logpath[1024];
-static FILE *logfp;
+static FILE **logfp;
 static const char *loglevels[] = {"ERROR","WARN","INFO","DEBUG"};
 
 void putlog(enum log_lvl_t lvl, const char *s, size_t n) {
-    int logwasclosed = 0;
-
-    if (!logfp) {
-        logfp = fopen(logpath, "w");
-        if (!logfp) return;
-        logwasclosed = 1;
-    }
+    if (!logfp || !*logfp) return;
+    if (!s || n == 0) return;
 
     time_t now;
     struct tm *t;
     char buf[128];
     time(&now);
     t = localtime(&now);
+
     size_t logflen = strftime(buf, sizeof(buf), "%H:%M:%S ", t);
     if (logflen > 126 || lvl < LOG_ERROR || lvl > LOG_DEBUG) {
-        fwrite("LOGGING ERROR", sizeof("LOGGING ERROR")-1, 1, logfp);
-        fflush(logfp);
+        fwrite("LOGGING ERROR", sizeof("LOGGING ERROR")-1, 1, *logfp);
+        fflush(*logfp);
         return;
     }
     logflen += snprintf(buf + logflen, sizeof(buf) - logflen, "%s: ", loglevels[lvl]);
-    fwrite(buf, logflen, 1, logfp);
+    fwrite(buf, logflen, 1, *logfp);
 
     size_t s_len = (n)? n : strlen(s);
-    fwrite(s, s_len, 1, logfp);
+    fwrite(s, s_len, 1, *logfp);
     if (s[s_len - 1] != '\n') {
-        fputc('\n', logfp);
+        fputc('\n', *logfp);
     }
-    fflush(logfp);
-
-    if (logwasclosed && logfp) fclose(logfp);
+    fflush(*logfp);
 }
 void putlog_fmt(enum log_lvl_t lvl, const char *fmt, ...) {
+    if (!logfp || !*logfp) return;
     if (!fmt) return;
 
     va_list ap;
@@ -81,20 +75,13 @@ void putlog_fmt(enum log_lvl_t lvl, const char *fmt, ...) {
     free(buf);
 }
 
-void log_close() {
-    if (logfp) fclose(logfp);
-    logfp = NULL; 
-}
-int log_init(const char *path) {
-    if (!path) return -1;
+int log_init(FILE **fp, const char *path) {
+    if (!fp || !path) return -1;
 
-    if (strlen(path) > sizeof(logpath)-1) return -1;
+    *fp = fopen(path, "w");
+    if (!*fp) return -1;
 
-    strcpy(logpath, path);
+    logfp = fp;
 
-    logfp = fopen(logpath, "w");
-    if (!logfp) return -1;
-
-    //atexit(log_close);
     return 0;
 }

@@ -18,7 +18,7 @@ DEFINES  ?= $(SRC_DEFINES)
 
 
 # ---- sources/objects (include top-level and one-level subdirs) --------------
-SRC  := $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/*/*.c)
+SRC  := $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/*/*.c) $(wildcard $(SRCDIR)/*/*/*.c)
 OBJ  := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC))
 DEPS := $(OBJ:.o=.d)
 TESTSRC  := $(wildcard $(TESTSRCDIR)/*.c) $(wildcard $(TESTSRCDIR)/*/*.c)

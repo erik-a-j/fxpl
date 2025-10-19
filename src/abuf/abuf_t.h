@@ -3,7 +3,8 @@
 #include <stddef.h>
 
 enum abuf_error_t {
-    ABNONE = 0
+    ABUNINIT = -1
+   ,ABNONE = 0
    ,ABNULL
    ,ABMALLOC
    ,ABOVF

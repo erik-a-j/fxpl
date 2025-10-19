@@ -11,6 +11,8 @@
 #include "../output/o_flags.h"
 #include "../logging/log.h"
 
+#define INCLUDED_FROM_INPUT
+#include "input_utils.h"
 
 
 int i_read_kseq(char **kseq_out) {
@@ -83,63 +85,14 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
     if (kseq_len == 3 && kseq[1] == '[') { switch (kseq[2]) {
         case 'D':
         {
-            char *buf = NULL;
-            int r = fs_get_relative_dir(&buf, ctx->CWD, "..");
-            if (r) {
-                if (r == -1)
-                    return P_FAIL;
-                break;
-            }
-            ctx->o_flags |= o_ALL;
-
-            free(ctx->CWD);
-            ctx->CWD = buf;
-            buf = NULL;
-            if (chdir(ctx->CWD) != 0)
-                return P_FAIL;
-            if (fs_get_rendered_cwd(ctx->rcwd, sizeof(ctx->rcwd), ctx->CWD) != 0)
-                return P_FAIL;
-            if (fs_read_dir(&ctx->d_cur.ab, &ctx->d_cur.e, ctx->CWD) != 0)
-                return P_FAIL;
-
-            if (ctx->win.cy >= ctx->d_cur.e.num) ctx->win.cy = ctx->d_cur.e.num-1;
-
-            r = fs_get_relative_dir(&buf, ctx->CWD, "..");
-            if (r) {
-                if (r == -1)
-                    return P_FAIL;
-                fs_clear_entries(&ctx->d_par.e);
-                break;
-            }
-            
-            free(ctx->d_par.path);
-            ctx->d_par.path = buf;
-            buf = NULL;
-            if (fs_read_dir(&ctx->d_par.ab, &ctx->d_par.e, ctx->d_par.path) != 0)
+            if (i_chdir(ctx, NULL) != 0)
                 return P_FAIL;
             break;
         }
         case 'C':
         {
-            char *buf = NULL;
-            int r = fs_get_relative_dir(&buf, ctx->CWD, ctx->d_cur.e.ent[ctx->win.cy].name);
-            if (r) {
-                if (r == -1) return P_FAIL;
-                break;
-            }
-            ctx->o_flags |= o_ALL;
-
-            ctx_dir_move(&ctx->d_par, &ctx->d_cur);
-            ctx_dir_init(&ctx->d_cur);
-            ctx->d_cur.path = buf;
-            buf = NULL;
-            
-            if (chdir(ctx->CWD) != 0) return P_FAIL;
-            if (fs_get_rendered_cwd(ctx->rcwd, sizeof(ctx->rcwd), ctx->CWD) != 0) {
+            if (i_chdir(ctx, ctx->d_cur.e.ent[ctx->win.cy].name) != 0)
                 return P_FAIL;
-            }
-            if (fs_read_dir(&ctx->d_cur.ab, &ctx->d_cur.e, ctx->CWD) != 0) return P_FAIL;
-            if (ctx->win.cy >= ctx->d_cur.e.num) ctx->win.cy = ctx->d_cur.e.num-1;
             break;
         }
         case 'A':

@@ -37,10 +37,10 @@ void ab_ensure(abuf_t *ab, size_t size) {
     ab->b = newb;
     ab->cap = newcap;
 }
-const char *ab_view(const abuf_t *ab, const abuf_view_t *view) {
-    if (!ab || ab->error) return NULL;
-    if (ab->len >= view->off + view->len) {
-        return ab->b + view->off;
+const char *ab_view(const abuf_view_t *view) {
+    if (!view || !view->ab || view->ab->error) return NULL;
+    if (view->ab->len >= view->off + view->len) {
+        return view->ab->b + view->off;
     }
     return NULL;
 }
@@ -66,6 +66,7 @@ void ab_app(abuf_t *ab, const char *data, size_t size, abuf_view_t *view) {
         ab->b[ab->len + size-1] = '\0';
         view->off = ab->len;
         view->len = size;
+        view->ab = ab;
     }
     ab->len += size;
 }
@@ -159,14 +160,14 @@ int ab_init(abuf_t *ab, size_t size) {
     ab->b = NULL;
     ab->cap = 0;
     ab->len = 0;
-    ab->error = ABNONE;
+    ab->error = ABUNINIT;
 
     ab->b = malloc(size);
     if (!ab->b) return -1;
 
     memset(ab->b, 0, size);
     ab->cap = size;
-
+    ab->error = ABNONE;
     return 0;
 }
 void ab_destroy(abuf_t *ab) {
@@ -175,5 +176,5 @@ void ab_destroy(abuf_t *ab) {
     ab->b = NULL;
     ab->cap = 0;
     ab->len = 0;
-    ab->error = ABNONE;
+    ab->error = ABUNINIT;
 }

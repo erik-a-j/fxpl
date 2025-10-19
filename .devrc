@@ -27,3 +27,11 @@ run() {
     ../main
     cd ..
 }
+f() {
+    local tmp="$(mktemp -t "fxpl-cwd.XXXXXX")"
+    local cwd=
+    ./main "$@" --cwd-file="$tmp"
+    IFS= read -r -d '' cwd < "$tmp"
+    [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+    rm -f -- "$tmp"
+}

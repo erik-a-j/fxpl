@@ -3,7 +3,6 @@
 #include "o_flags.h"
 
 typedef struct ctx_t ctx_t;
-int o_refresh(ctx_t *ctx, int flags);
-void o_ab_destroy();
+int o_refresh(abuf_t *ab, ctx_t *ctx, int flags);
 
 #endif /*OUTPUT_H*/

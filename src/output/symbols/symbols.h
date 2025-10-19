@@ -12,6 +12,5 @@
 #define LHALF_CIRCLE "\xEE\x82\xB6"
 #define RHALF_CIRCLE "\xEE\x82\xB4"
 
-#include "ft.h"
 
 #endif /*SYMBOLS_H*/
