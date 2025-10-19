@@ -67,6 +67,11 @@ void fs_clear_entries(ctx_entries_t *p) {
     }
     p->num = 0;
 }
+static void get_ft(fs_entry_t *e) {
+    if (e->is_dir) {
+        strcpy(e->ft, DIR2_FT);
+    }
+}
 int fs_read_dir(abuf_t *ab, ctx_entries_t *p, const char *path) {
     if (!p || !path) return -1;
     if (ab) ab_clear(ab);
@@ -104,6 +109,7 @@ int fs_read_dir(abuf_t *ab, ctx_entries_t *p, const char *path) {
                 if (ab->error) return -1;
             }
         }
+        get_ft(&e);
         if (push_entry(p, &e) != 0) return -1;
     }
     closedir(d);
@@ -112,7 +118,6 @@ int fs_read_dir(abuf_t *ab, ctx_entries_t *p, const char *path) {
 
     return 0;
 }
-
 int fs_get_relative_dir(char **buf, const char *path, const char *rel) {
     if (!path || !rel) return -1;
 

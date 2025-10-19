@@ -9,13 +9,12 @@ void mgc_close() {
     mgc = NULL;
 }
 static int mgc_init() {
-    mgc = magic_open(MAGIC_MIME_TYPE);
+    mgc = magic_open(MAGIC_MIME_TYPE | MAGIC_SYMLINK);
     if (!mgc) return -1;
     if (magic_load(mgc, NULL) != 0) {
         magic_close(mgc);
         return -1;
     }
-    //atexit(mgc_close);
     return 0;
 }
 const char *magic_get_mimetype(const char *path) {

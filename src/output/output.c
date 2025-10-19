@@ -63,14 +63,20 @@ static inline void draw_cwd_entries(ctx_t *ctx) {
         ab_appnch(' ', cols);
         ab_appfmt(0, "\x1b[%dD", cols);
 
-        if (idx > e->num) continue;
+        if (idx >= e->num) continue;
         
         if (is_cur_row)
             ab_appstrlit("\x1b[7m");
 
         if (e->ent[idx].is_dir)
             ab_appstrlit("\x1b[1m\x1b[38;2;233;196;97m");
-        ab_appnch(' ', 3);
+        
+        ab_appnch(' ', 1);
+        if (e->ent[idx].ft[0] != '\0')
+            ab_app(e->ent[idx].ft, strlen(e->ent[idx].ft));
+        else
+            ab_appnch(' ', 1);
+        ab_appnch(' ', 1);
 
         const char *name = e->ent[idx].name;
         int name_space = cols - 3;
@@ -107,11 +113,25 @@ static inline void draw_status_bar(ctx_t *ctx) {
     ab_appstrlit("\x1b[0m");
     ab_appfmt(0, "\x1b[%d;0H", ctx->win.rows);
     ab_appstrlit("\x1b[K");
-    ab_appstrlit(LHALF_CIRCLE);
-    //fs_pretty_size_t ps = fs_get_pretty_size( )
-    ab_appfmt(0, "%ld", ent->size);
-    ab_appstrlit(RHALF_CIRCLE);
-    //ab_appfmt(ctx->win.cols, "%s", ctx->d_cur.e.ent[ctx->win.cy].name);
+
+    {
+        ab_appstrlit("\x1b[38;2;255;194;65m");
+        ab_appstrlit(LHALF_CIRCLE);
+    }
+    {
+        ab_appstrlit("\x1b[7m");
+        fs_pretty_size_t ps = fs_get_pretty_size(ent->size);
+        ab_appfmt(0, "%ld", ps.size);
+        ab_appnch(ps.suffix, 1);
+        ab_appstrlit("\x1b[27m");
+    }
+    {
+        ab_appstrlit(RHALF_CIRCLE);
+        ab_appstrlit("\x1b[0m");
+    }
+    const char *mime_type = ab_view(&ctx->d_cur.ab, &ent->mime_type);
+    if (mime_type)
+        ab_appfmt(ctx->win.cols, " %s", mime_type);
 }
 int o_refresh(ctx_t *ctx, int flags) {
     if (!ctx) return -1;

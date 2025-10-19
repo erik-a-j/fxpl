@@ -14,7 +14,7 @@
 #define PY2_FT "\xEE\x98\x86"
 #define RS_FT "\xEE\x9A\x8B"
 #define GIT_FT "\xEE\x99\x9D"
-
+#define GNU_FT "\xEE\x9D\xB9"
 
 
 #endif /*FT_H*/
