@@ -18,6 +18,7 @@ typedef struct ctx_entries_t {
 typedef struct ctx_dir_t {
     char *path;
     ctx_entries_t e;
+    int cy;
     abuf_t ab;
 } ctx_dir_t;
 
@@ -32,6 +33,7 @@ typedef struct ctx_win_t {
 
 typedef struct ctx_cmd_t {
     cmd_search_t search;
+    enum cmd_t cur_cmd;
     cmd_box_t *box;
     cmd_prompt_t *prompt;
 } ctx_cmd_t;
@@ -42,8 +44,9 @@ typedef struct ctx_t {
     #define CWD d_cur.path
     char rcwd[CTX_RCWD_MAX];
 
-    ctx_dir_t d_cur;
     ctx_dir_t d_par;
+    ctx_dir_t d_cur;
+    ctx_dir_t d_peek;
 
     ctx_cmd_t cmd;
 

@@ -41,8 +41,12 @@ int main(int argc, char *argv[]) {
         if (fs_read_dir(&ctx->d_par.ab, &ctx->d_par.e, ctx->d_par.path) != 0)
             goto eop;
     }
-    write(STDOUT_FILENO, "\x1b[?25l", 6);
-
+    if (ctx->d_cur.e.num > 0) {
+        if (fs_get_relative_dir(&ctx->d_peek.path, ctx->CWD, ctx->d_cur.e.ent[0].name) == 0) {
+            if (fs_read_dir(&ctx->d_peek.ab, &ctx->d_peek.e, ctx->d_peek.path) != 0)
+                goto eop;
+        }
+    }
     if (o_refresh(o_ab, ctx, o_ALL) != 0) goto eop;
     
     char *kseq = NULL;

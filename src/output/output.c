@@ -7,6 +7,7 @@
 #include <errno.h>
 #include "output.h"
 #include "symbols/symbols.h"
+#include "colors/colors.h"
 #include "colors/fpermissions.h"
 #include "../abuf/abuf.h"
 #include "../fs/fs.h"
@@ -53,12 +54,13 @@ static inline void draw_cwd_entries(abuf_t *ab, ctx_t *ctx) {
 
     int rows = win->erows;
     int cols = win->ecols;
+    int cy = ctx->d_cur.cy;
 
     for (int i = 0; i < rows; i++) {
         int scr_y = win->erows_beg+1 + i;
         int scr_x = win->ecols_beg+1;
         int idx = win->etop + i;
-        int is_cur_row = (idx == win->cy)? 1 : 0;
+        int is_cur_row = (idx == cy)? 1 : 0;
 
         ab_appstrlit("\x1b[0m");
         ab_appfmt(0, "\x1b[%d;%dH", scr_y, scr_x);
@@ -68,7 +70,7 @@ static inline void draw_cwd_entries(abuf_t *ab, ctx_t *ctx) {
         if (idx >= e->num) continue;
         
         if (e->ent[idx].is_dir)
-            ab_appstrlit("\x1b[1m\x1b[38;2;233;196;97m");
+            ab_appstrlit("\x1b[1m"DIR_ENTRY_COLOR);
 
         if (is_cur_row)
             ab_appstrlit("\x1b[7m");
@@ -82,7 +84,7 @@ static inline void draw_cwd_entries(abuf_t *ab, ctx_t *ctx) {
         ab_appstrlit(FT_COLOR_RES);
 
         if (e->ent[idx].is_dir)
-            ab_appstrlit("\x1b[1m\x1b[38;2;233;196;97m");
+            ab_appstrlit("\x1b[1m"DIR_ENTRY_COLOR);
 
         const char *name = e->ent[idx].name;
         int name_space = cols - 3;
@@ -101,15 +103,38 @@ static inline void draw_parent_entries(abuf_t *ab, ctx_t *ctx) {
     ctx_win_t *win = &ctx->win;
     ab_appstrlit("\x1b[0m");
     for (int i = 0; i < win->erows - win->erows_beg; i++) {
-        ab_appfmt(0, "\x1b[%d;0H", win->erows_beg+1 + i);
+        ab_appfmt(0, "\x1b[%d;1H", win->erows_beg+1 + i);
         ab_appnch(' ', win->ecols_beg);
+        ab_appfmt(0, "\x1b[%dD", win->ecols_beg);
         if (i >= e->num) continue;
 
-        ab_appfmt(0, "\x1b[%dD", win->ecols_beg);
         if (e->ent[i].is_dir)
-            ab_appstrlit("\x1b[1m\x1b[38;2;233;196;97m");
+            ab_appstrlit("\x1b[1m"DIR_ENTRY_COLOR);
         ab_appfmt(win->ecols_beg, " %s", e->ent[i].name);
         int pad = win->ecols_beg - (int)strlen(e->ent[i].name)-3;
+        if (pad > 0) ab_appnch(' ', pad);
+        ab_appstrlit("\x1b[0m");
+    }
+}
+static inline void draw_peek_entries(abuf_t *ab, ctx_t *x) {
+    ctx_entries_t *e = &x->d_peek.e;
+    ctx_win_t *win = &x->win;
+
+    int peek_cols_beg = win->ecols_beg + win->ecols;
+    int peek_cols = win->cols - peek_cols_beg;
+
+    ab_appstrlit("\x1b[0m");
+    for (int i = 0; i < win->erows - win->erows_beg; i++) {
+        ab_appfmt(0, "\x1b[%d;%dH", win->erows_beg+1 + i, peek_cols_beg);
+        ab_appnch(' ', peek_cols);
+        ab_appfmt(0, "\x1b[%dD", peek_cols);
+        if (i >= e->num) continue;
+
+        if (e->ent[i].is_dir)
+            ab_appstrlit("\x1b[1m"DIR_ENTRY_COLOR);
+
+        ab_appfmt(peek_cols, " %s", e->ent[i].name);
+        int pad = peek_cols - (int)strlen(e->ent[i].name)-3;
         if (pad > 0) ab_appnch(' ', pad);
         ab_appstrlit("\x1b[0m");
     }
@@ -202,7 +227,8 @@ static inline void status_bar_draw_perms(abuf_t *ab, fs_entry_t *ent) {
     ab_appstrlit("\x1b[0m");
 }
 static inline void draw_status_bar(abuf_t *ab, ctx_t *ctx) {
-    fs_entry_t *ent = &ctx->d_cur.e.ent[ctx->win.cy];
+    int cy = ctx->d_cur.cy;
+    fs_entry_t *ent = &ctx->d_cur.e.ent[cy];
     ab_appstrlit("\x1b[0m");
     ab_appfmt(0, "\x1b[%d;1H", ctx->win.rows);
     ab_appstrlit("\x1b[K");
@@ -243,7 +269,7 @@ static inline void draw_status_bar(abuf_t *ab, ctx_t *ctx) {
     }
 
     int e_numlen = numlen(ctx->d_cur.e.num);
-    int e_curnumlen = numlen(ctx->win.cy+1);
+    int e_curnumlen = numlen(cy+1);
 
     int len_left = ctx->win.cols - len;
 
@@ -255,7 +281,7 @@ static inline void draw_status_bar(abuf_t *ab, ctx_t *ctx) {
       }
       {
         ab_appstrlit("\x1b[7m");
-        ab_appfmt(0, "%d/%d", ctx->win.cy+1, ctx->d_cur.e.num);
+        ab_appfmt(0, "%d/%d", cy+1, ctx->d_cur.e.num);
         ab_appstrlit("\x1b[27m");
       }
       {
@@ -296,11 +322,30 @@ static inline void draw_box(abuf_t *ab, cmd_box_t *x) {
   }
     ab_appstrlit("\n\b"BL_ROUND);
     ab_appnstrlit(HLINE_THIN, x->cols-2);
-
+}
+static inline void erase_box(abuf_t *ab, cmd_box_t *x) {
+    ab_appfmt(0, "\x1b[%d;%dH", x->s_row+1, x->s_col+1);
+    for (int i = 0; i < x->rows; i++) {
+        ab_appnch(' ', x->cols);
+        ab_appfmt(0, "\n\x1b[%dD", x->cols);
+    }
 }
 static inline void draw_prompt(abuf_t *ab, cmd_prompt_t *x) {
-    ab_appstrlit("\x1b[?25h");
+    const char *p = &x->text[0];
+
+    if (x->len_text > x->trunc) {
+        p += x->len_text - x->trunc;
+    }
+
+    ab_appfmt(0, "\x1b[%d;%dH", x->s_row+1, x->s_col+1);
+    ab_appnch(' ', x->trunc);
+    ab_appfmt(0, "\x1b[%dD", x->trunc);
+
+    ab_app(p, x->trunc);
+
+    ab_appstrlit("\x1b[?25h"); 
 }
+
 int o_refresh(abuf_t *ab, ctx_t *ctx, int flags) {
     if (!ctx) return -1;
     if (ctx->win.error) return 1;
@@ -308,16 +353,27 @@ int o_refresh(abuf_t *ab, ctx_t *ctx, int flags) {
     if (flags == o_NONE) return 0;
     ab_clear(ab);
 
+    ab_appstrlit("\x1b[?25l");
+    if (ab->error) return -1;
+
+    if (flags & o_e_BOX && ctx->cmd.box) {
+        erase_box(ab, ctx->cmd.box);
+        if (ab->error) return -1;
+    }
     if (flags & o_CWD) {
         draw_cwd(ab, ctx);
+        if (ab->error) return -1;
+    }
+    if (flags & o_PARENT) {
+        draw_parent_entries(ab, ctx);
         if (ab->error) return -1;
     }
     if (flags & o_CWDENT) {
         draw_cwd_entries(ab, ctx);
         if (ab->error) return -1;
     }
-    if (flags & o_PARENT) {
-        draw_parent_entries(ab, ctx);
+    if (flags & o_PEEKENT) {
+        draw_peek_entries(ab, ctx);
         if (ab->error) return -1;
     }
     if (flags & o_STATUS) {
@@ -329,8 +385,10 @@ int o_refresh(abuf_t *ab, ctx_t *ctx, int flags) {
         if (ab->error) return -1;
     }
     if (flags & o_PROMPT && ctx->cmd.prompt) {
-
+        draw_prompt(ab, ctx->cmd.prompt);
+        if (ab->error) return -1;
     }
+
     if (write_all(STDOUT_FILENO, ab->b, ab->len) != 0) return -1;
     return 0;
 }

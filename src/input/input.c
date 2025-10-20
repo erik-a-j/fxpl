@@ -76,11 +76,18 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
     if (!ctx) return P_FAIL;
     if (!kseq || kseq_len == 0) return P_NOOP;
 
+    switch (ctx->cmd.cur_cmd) {
+        case CMD_SEARCH:
+            i_search(ctx, kseq, kseq_len);
+            return P_NOOP;
+        default: break;
+    }
+
     if (kseq_len == 1) { switch (kseq[0]) {
         case 'q': /* fall through */ 
         case 'Q': return P_QUIT;
         case '/': 
-            i_search(ctx);
+            i_search(ctx, kseq, kseq_len);
             return P_NOOP;
         default: return P_NOOP;
     }}
@@ -90,12 +97,14 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
         {
             if (i_chdir(ctx, NULL) != 0)
                 return P_FAIL;
+            ctx->win.cy = ctx->d_cur.cy;
             break;
         }
         case 'C':
         {
-            if (i_chdir(ctx, ctx->d_cur.e.ent[ctx->win.cy].name) != 0)
+            if (i_chdir(ctx, &ctx->d_cur.e.ent[ctx->d_cur.cy]) != 0)
                 return P_FAIL;
+            ctx->win.cy = ctx->d_cur.cy;
             break;
         }
         case 'A':
@@ -105,7 +114,9 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
                 ctx->win.cy--;
             }
             clamp_cursor_and_scroll(ctx);
+            ctx->d_cur.cy = ctx->win.cy;
             ctx->o_flags |= (o_CWDENT | o_STATUS);
+            i_get_peekdir(ctx);
             break;
         case 'B':
             if (ctx->win.cy == ctx->d_cur.e.num-1) {
@@ -114,7 +125,9 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
                 ctx->win.cy++;
             }
             clamp_cursor_and_scroll(ctx);
+            ctx->d_cur.cy = ctx->win.cy;
             ctx->o_flags |= (o_CWDENT | o_STATUS);
+            i_get_peekdir(ctx);
             break;
         default: break;
     }}

@@ -3,6 +3,7 @@
 
 #ifdef INCLUDED_FROM_MAIN
 //static ctx_t ctx;
+#include "cmd/cmd.h"
 #include "cmd/cmd_utils.h"
 #include <magic.h>
 
@@ -21,8 +22,9 @@ static inline void ctx_shutdown() {
         fclose(main_ctx._cwd_file);
         main_ctx._cwd_file = NULL;
     }
-    ctx_dir_destroy(&main_ctx.ctx.d_cur);
     ctx_dir_destroy(&main_ctx.ctx.d_par);
+    ctx_dir_destroy(&main_ctx.ctx.d_cur);
+    ctx_dir_destroy(&main_ctx.ctx.d_peek);
 
     ab_destroy(&main_ctx.ctx.o_ab);
     if (main_ctx._mgc) magic_close(main_ctx._mgc);
@@ -48,9 +50,12 @@ static inline int ctx_init() {
 
     memset(ctx->rcwd, 0, sizeof ctx->rcwd);
 
-    if (ctx_dir_init(&ctx->d_cur) != 0) return -1;
     if (ctx_dir_init(&ctx->d_par) != 0) return -1;
+    if (ctx_dir_init(&ctx->d_cur) != 0) return -1;
+    if (ctx_dir_init(&ctx->d_peek) != 0) return -1;
 
+    //ctx->cmd.cmd = NULL;
+    ctx->cmd.cur_cmd = CMD_NONE;
     cmd_search_clear(&ctx->cmd.search);
     ctx->cmd.box = NULL;
     ctx->cmd.prompt = NULL;

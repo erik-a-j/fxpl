@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libgen.h>
+#undef basename
 #include <errno.h>
 
 static inline char *fs_dirname(char *buf, size_t sz, const char *path) {

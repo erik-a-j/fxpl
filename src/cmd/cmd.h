@@ -1,6 +1,10 @@
 #ifndef CMD_H
 #define CMD_H
 
+enum cmd_t {
+    CMD_NONE
+   ,CMD_SEARCH
+};
 
 #define CMD_BOX_T_TEXTSZ 64
 #define CMD_PROMPT_T_TEXTSZ 256
@@ -12,6 +16,8 @@ typedef struct cmd_box_t {
 
 typedef struct cmd_prompt_t {
     int s_row, s_col;
+    int len_text;
+    int trunc;
     char text[CMD_PROMPT_T_TEXTSZ];
 } cmd_prompt_t;
 

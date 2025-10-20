@@ -6,7 +6,7 @@ OBJDIR := $(current_dir)/out
 TESTSRCDIR := $(current_dir)/test
 TESTOBJDIR := $(current_dir)/testout
 
-SRC_CFLAGS  := -Wall -Wextra -Winline -pedantic -g -O0 -std=gnu23 -march=native -fno-omit-frame-pointer -MMD -MP
+SRC_CFLAGS  := -Wall -Wextra -Winline -pedantic -ggdb3 -O0 -std=gnu23 -march=native -fno-omit-frame-pointer -MMD -MP
 SRC_LDFLAGS :=
 SRC_LDLIBS  := -lmagic
 SRC_DEFINES := -D_GNU_SOURCE -D__USE_FILE_OFFSET64

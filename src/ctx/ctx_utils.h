@@ -17,6 +17,7 @@ static inline void ctx_dir_destroy(ctx_dir_t *x) {
     if (!x) return;
     free(x->path);
     x->path = NULL;
+    x->cy = 0;
     ctx_entries_destroy(&x->e);
     ab_destroy(&x->ab);
 }
@@ -36,6 +37,7 @@ static inline int ctx_dir_init(ctx_dir_t *x) {
     if (!x) return -1;
 
     x->path = NULL;
+    x->cy = 0;
     if (ctx_entries_init(&x->e, CTX_ENTRIES_T_ENT_INITCAP) != 0) return -1;
     if (ab_init(&x->ab, CTX_DIR_T_AB_INITCAP) != 0) {
         ctx_entries_destroy(&x->e);
