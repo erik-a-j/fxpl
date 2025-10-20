@@ -264,6 +264,43 @@ static inline void draw_status_bar(abuf_t *ab, ctx_t *ctx) {
       }
     }
 }
+static inline void draw_box(abuf_t *ab, cmd_box_t *x) {
+    if (x->cols < 3 || x->rows < 3) {
+        putlog_fmt(LOG_WARN, "draw_box(): dims to small for: %s", x->text);
+        return;
+    }
+    int len_text = (int)strlen(x->text);
+
+    ab_appfmt(0, "\x1b[%d;%dH", x->s_row+1, x->s_col+1);
+
+    ab_appstrlit(TL_ROUND);
+  {
+    if (len_text <= x->cols-2) {
+        ab_app(x->text, len_text);
+        ab_appnstrlit(HLINE_THIN, x->cols-2 - len_text);
+    } else {
+        ab_appnstrlit(HLINE_THIN, x->cols-2);
+    }
+  }
+    ab_appstrlit(TR_ROUND);
+  {  
+    for (int i = 0; i < x->rows-2; i++)
+        ab_appstrlit("\n\b"VLINE_THIN);
+  }
+    ab_appstrlit("\n\b"BR_ROUND);
+
+    ab_appfmt(0, "\x1b[%d;%dH", x->s_row+1, x->s_col+1+1);
+  {  
+    for (int i = 0; i < x->rows-2; i++)
+        ab_appstrlit("\n\b"VLINE_THIN);
+  }
+    ab_appstrlit("\n\b"BL_ROUND);
+    ab_appnstrlit(HLINE_THIN, x->cols-2);
+
+}
+static inline void draw_prompt(abuf_t *ab, cmd_prompt_t *x) {
+    ab_appstrlit("\x1b[?25h");
+}
 int o_refresh(abuf_t *ab, ctx_t *ctx, int flags) {
     if (!ctx) return -1;
     if (ctx->win.error) return 1;
@@ -286,6 +323,13 @@ int o_refresh(abuf_t *ab, ctx_t *ctx, int flags) {
     if (flags & o_STATUS) {
         draw_status_bar(ab, ctx);
         if (ab->error) return -1;
+    }
+    if (flags & o_BOX && ctx->cmd.box) {
+        draw_box(ab, ctx->cmd.box);
+        if (ab->error) return -1;
+    }
+    if (flags & o_PROMPT && ctx->cmd.prompt) {
+
     }
     if (write_all(STDOUT_FILENO, ab->b, ab->len) != 0) return -1;
     return 0;

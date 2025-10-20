@@ -13,6 +13,7 @@
 
 #define INCLUDED_FROM_INPUT
 #include "input_utils.h"
+#include "search.h"
 
 
 int i_read_kseq(char **kseq_out) {
@@ -78,7 +79,9 @@ enum processed i_process_kseq(ctx_t *ctx, const char *kseq, int kseq_len) {
     if (kseq_len == 1) { switch (kseq[0]) {
         case 'q': /* fall through */ 
         case 'Q': return P_QUIT;
-        
+        case '/': 
+            i_search(ctx);
+            return P_NOOP;
         default: return P_NOOP;
     }}
 

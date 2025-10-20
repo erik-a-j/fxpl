@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
         parse_args(argc, argv);
 
     ctx_t *ctx = &main_ctx.ctx;
-    abuf_t *o_ab = &main_ctx._ab;
+    abuf_t *o_ab = &main_ctx.ctx.o_ab;
 
     if (term_get_winsize(&ctx->win.rows, &ctx->win.cols) != 0)
         goto eop;

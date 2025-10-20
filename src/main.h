@@ -3,12 +3,11 @@
 
 #ifdef INCLUDED_FROM_MAIN
 //static ctx_t ctx;
-
+#include "cmd/cmd_utils.h"
 #include <magic.h>
 
 static struct main_t {
     ctx_t ctx;
-    abuf_t _ab;
     magic_t _mgc;
     FILE *_logfp;
     FILE *_cwd_file;
@@ -25,7 +24,7 @@ static inline void ctx_shutdown() {
     ctx_dir_destroy(&main_ctx.ctx.d_cur);
     ctx_dir_destroy(&main_ctx.ctx.d_par);
 
-    ab_destroy(&main_ctx._ab);
+    ab_destroy(&main_ctx.ctx.o_ab);
     if (main_ctx._mgc) magic_close(main_ctx._mgc);
     main_ctx._mgc = NULL;
     fclose(main_ctx._logfp);
@@ -35,7 +34,7 @@ static inline int ctx_init() {
     main_ctx._mgc = NULL;
     main_ctx._logfp = NULL;
     main_ctx._cwd_file = NULL;
-    if (ab_init(&main_ctx._ab, 8192) != 0) return -1;
+    if (ab_init(&main_ctx.ctx.o_ab, 8192) != 0) return -1;
     if (magic_init(&main_ctx._mgc) != 0) return -1;
     if (log_init(&main_ctx._logfp, "/home/arcno/src/fxpl/log.txt") != 0) return -1;
 
@@ -51,6 +50,10 @@ static inline int ctx_init() {
 
     if (ctx_dir_init(&ctx->d_cur) != 0) return -1;
     if (ctx_dir_init(&ctx->d_par) != 0) return -1;
+
+    cmd_search_clear(&ctx->cmd.search);
+    ctx->cmd.box = NULL;
+    ctx->cmd.prompt = NULL;
 
     ctx->o_flags = o_NONE;
 

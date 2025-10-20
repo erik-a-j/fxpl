@@ -7,13 +7,13 @@
 
 #include "../abuf/abuf_t.h"
 #include "../fs/fs_entry_t.h"
+#include "../cmd/cmd.h"
 
 typedef struct ctx_entries_t {
     fs_entry_t *ent; // init size = CTX_ENTRIES_T_ENT_INITCAP * sizeof(fs_entry_t)
     int num;
     int cap;
 } ctx_entries_t;
-
 
 typedef struct ctx_dir_t {
     char *path;
@@ -30,23 +30,24 @@ typedef struct ctx_win_t {
     int error;
 } ctx_win_t;
 
+typedef struct ctx_cmd_t {
+    cmd_search_t search;
+    cmd_box_t *box;
+    cmd_prompt_t *prompt;
+} ctx_cmd_t;
+
 typedef struct ctx_t {
     ctx_win_t win;
 
-    //char *cwd;
+    #define CWD d_cur.path
     char rcwd[CTX_RCWD_MAX];
 
-#define CWD d_cur.path
     ctx_dir_t d_cur;
     ctx_dir_t d_par;
-    /*
-    ctx_entries_t e;
-    struct ctx_parent_t {
-        char path[PATH_MAX+1];
-        ctx_entries_t e;
-    } parent;
-    
-    abuf_t ab;*/
+
+    ctx_cmd_t cmd;
+
+    abuf_t o_ab;
     int o_flags;
 } ctx_t;
 

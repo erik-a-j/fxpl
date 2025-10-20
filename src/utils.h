@@ -14,4 +14,6 @@ static inline int numlen(ssize_t num) {
     return len;
 }
 
+#define memcpy_strlit(dest, strlit) memcpy(dest, strlit, sizeof(strlit))
+
 #endif /*UTILS_H*/
